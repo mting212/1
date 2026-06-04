@@ -1,0 +1,30 @@
+# Python virtual environment
+.venv/
+
+# Node.js dependencies
+node_modules/
+
+# Next.js build output
+.next/
+
+# Build outputs
+dist/
+build/
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Turborepo cache
+.turbo/
+
+# TypeScript incremental build info
+*.tsbuildinfo
