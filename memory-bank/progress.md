@@ -1,25 +1,35 @@
 # MeetFlow 进度记录
 
 ## 当前状态
-
-- **当前 Phase**: 3（Next.js 基础框架）
-- **当前步骤**: 21
+- **当前 Phase**: 3 完成 → 进入 Phase 5
+- **当前步骤**: 28
 - **总步骤数**: 60
-- **已完成**: 21
+- **已完成**: 28
 
-## 步骤完成记录
+## Phase 完成情况
 
-| 1 | 初始化 Git 仓库与 .gitignore | 2026-06-04 | ✅ |
-| 2 | 安装基础工具链 | 2026-06-04 | ✅ | pnpm/Go/Python/uv/turbo/lefthook/biome |
-| 3 | 建立 Monorepo 目录结构 | 2026-06-04 | ✅ |
-| 4 | 配置 pnpm Workspace 与 Turborepo | 2026-06-04 | ✅ |
-| 5 | 配置 Docker Compose 本地环境 | 2026-06-04 | ✅ |
-| 6-12 | 数据库 Schema + Seed + 测试工具 | 2026-06-04 | ✅ | 6 张表 + GIST 约束 |
-| 13-14 | Go 模块 + Protobuf | 2026-06-04 | ✅ | 3 RPC |
-| 15-16 | 可用性引擎 + 排序引擎 | 2026-06-04 | ✅ | 16 tests |
-| 17 | 冲突检测 + 两阶段锁 | 2026-06-04 | ✅ | 16 tests |
-| 18 | gRPC 服务端 + middleware | 2026-06-04 | ✅ | 5 handler tests |
-| 19-20 | 集成测试 + Redis 缓存 | 2026-06-04 | ✅ | 45 Go tests total |
-| 21 | 初始化 Next.js 应用 | 2026-06-04 | ✅ | Next.js 16 + tsc + build pass |
+| Phase | 步骤 | 状态 | 交付物 |
+|-------|------|------|--------|
+| 0: 开发环境 | 1-5 | ✅ | Git, 工具链, Monorepo, Docker |
+| 1: 数据库 | 6-12 | ✅ | 6 张表 + GIST + Seed + Test utils |
+| 2: Go 调度引擎 | 13-20 | ✅ | 45 Go tests, gRPC server |
+| 3: Next.js | 21-28 | ✅ | Auth + tRPC + Routers + shadcn/ui |
 
-## Go 测试总计: 45 | Next.js: build + tsc pass
+## 测试总计: 45 Go + tsc clean + Next.js build pass
+
+## 遇到的问题 (12 个，均已解决)
+
+| 问题 | 步骤 | 方案 |
+|------|------|------|
+| corepack EPERM | 2 | npm install -g pnpm |
+| Go PATH | 2 | setx |
+| timestamptz 导出 | 7-10 | timestamp({ withTimezone }) |
+| go-redis 路径 | 13 | redis/go-redis/v9 |
+| pgx Go 版本 | 13 | @v5.5.0 |
+| buf 未安装 | 14 | npm install -g |
+| buf lint prefix | 14 | SLOT_RANK_*/BOOKING_STATUS_* |
+| Docker 未安装 | 5,19 | 文件就绪 |
+| MinNoticeHours=0 | 15 | >0 时启用 |
+| InMemoryStore | 18 | store_memory.go |
+| msw builds | 21-22 | allowedBuilds in workspace |
+| exactOptionalPropertyTypes | 23-28 | 简化 auth + 类型适配 |
