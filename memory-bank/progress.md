@@ -9,9 +9,9 @@
 ## 当前状态
 
 - **当前 Phase**: 2（Go 调度引擎）
-- **当前步骤**: 16
+- **当前步骤**: 17
 - **总步骤数**: 60
-- **已完成**: 16
+- **已完成**: 17
 - **进行中**: 0
 
 ---
@@ -25,7 +25,7 @@
 | 3 | 建立 Monorepo 目录结构 | 2026-06-04 | ✅ 全部通过 | 12 个目录 + 12 个 .gitkeep，与 tech-stack.md §7.3 一致 |
 | 4 | 配置 pnpm Workspace 与 Turborepo | 2026-06-04 | ✅ 全部通过 | pnpm-workspace.yaml, package.json, turbo.json, .npmrc 就绪 |
 | 5 | 配置 Docker Compose 本地环境 | 2026-06-04 | ✅ 文件已创建，Docker 待安装 | PostgreSQL 16 + Redis 7, 含健康检查 |
-| 6 | 初始化 Drizzle 与数据库连接 | 2026-06-04 | ✅ tsc 通过（schema 模块因依赖待创建暂报错） | 连接池 max 20, idle timeout 30s |
+| 6 | 初始化 Drizzle 与数据库连接 | 2026-06-04 | ✅ tsc 通过 | 连接池 max 20, idle timeout 30s |
 | 7 | 创建 Users 与 CalendarAccount 表 | 2026-06-04 | ✅ tsc noEmit 通过 | users 表 6 字段, calendar_accounts 表 8 字段 + FK |
 | 8 | 创建 ScheduleLink 与 AvailabilityRule 表 | 2026-06-04 | ✅ tsc noEmit 通过 | schedule_links 11 字段 + availability_rules 6 字段 + FK |
 | 9 | 创建 Booking 表（含排他约束） | 2026-06-04 | ✅ tsc noEmit 通过 | GIST 排他约束防双订 + CHECK 约束 |
@@ -36,6 +36,7 @@
 | 14 | 定义 Protobuf 接口 | 2026-06-04 | ✅ buf lint 通过, go build 通过 | 3 RPC: GetAvailability, CreateBooking, CancelBooking |
 | 15 | 实现可用性计算引擎 | 2026-06-04 | ✅ 11/11 测试通过 | 6 阶段流水线，纯函数无副作用 |
 | 16 | 实现时段排序引擎 | 2026-06-04 | ✅ 5/5 测试通过 | cluster/spread 双策略，距离计算排序 |
+| 17 | 实现冲突检测与两阶段锁 | 2026-06-04 | ✅ 16/16 测试通过 | CheckConflict + CreateBooking 两阶段锁 + 并发安全 |
 
 ---
 
@@ -51,6 +52,7 @@
 | buf 未安装 | 14 | `npm install -g @bufbuild/buf` |
 | buf lint enum 前缀不匹配 | 14 | 修正为 `SLOT_RANK_*` / `BOOKING_STATUS_*` 前缀 |
 | Docker 未安装 | 5 | 文件已创建，验证延后 |
+| `MinNoticeHours=0` 时仍过滤了过去的时段 | 15 | 仅在 MinNoticeHours > 0 时启用 filterAfter |
 
 ---
 

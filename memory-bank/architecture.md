@@ -57,7 +57,9 @@ _尚未创建任何文件_
 | `internal/availability/engine_test.go` | 可用性计算 11 个单元测试 | ✅ |
 | `internal/availability/ranking.go` | `RankTimeSlots` — cluster/spread 双策略排序 | ✅ |
 | `internal/availability/ranking_test.go` | 排序引擎 5 个单元测试 | ✅ |
-| `internal/booking/` | 预约事务（待创建） | ⏳ |
+| `internal/booking/conflict.go` | `CheckConflict` 纯函数 + `BusySlotsFromBookings` 转换 | ✅ |
+| `internal/booking/service.go` | `BookingService` — 两阶段锁 CreateBooking + CancelBooking | ✅ |
+| `internal/booking/service_test.go` | 冲突检测 + 预约事务 16 个单元测试（含并发安全验证） | ✅ |
 | `internal/sync/` | 日历同步适配器（待创建） | ⏳ |
 | `pkg/cache/` | Redis 缓存工具（待创建） | ⏳ |
 
