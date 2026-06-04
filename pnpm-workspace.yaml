@@ -1,6 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+allowBuilds:
+  msw: set this to true or false
 allowedBuilds:
   esbuild: true
   sharp: true
+  msw: true
