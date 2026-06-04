@@ -64,8 +64,14 @@ _尚未创建任何文件_
 | `internal/booking/conflict.go` | `CheckConflict` 纯函数 + `BusySlotsFromBookings` 转换 | ✅ |
 | `internal/booking/service.go` | `BookingService` — 两阶段锁 CreateBooking + CancelBooking | ✅ |
 | `internal/booking/service_test.go` | 冲突检测 + 预约事务 16 个单元测试（含并发安全验证） | ✅ |
+| `internal/booking/store_memory.go` | `InMemoryStore` — BookingStore 内存实现（MVP 开发用） | ✅ |
+| `internal/middleware/logging.go` | gRPC 拦截器：请求日志 + panic recovery | ✅ |
+| `internal/handler.go` | `SchedulerHandler` — gRPC 服务实现，桥接 proto ↔ 业务 | ✅ |
+| `internal/handler_test.go` | Handler 5 个单元测试 | ✅ |
 | `internal/sync/` | 日历同步适配器（待创建） | ⏳ |
-| `pkg/cache/` | Redis 缓存工具（待创建） | ⏳ |
+| `pkg/cache/redis.go` | `AvailabilityCache` — Redis 缓存 Get/Set/Invalidate，nil client 降级 | ✅ |
+| `pkg/cache/redis_test.go` | 缓存层 4 个单元测试 | ✅ |
+| `test/integration/scheduler_integration_test.go` | 4 个全组件集成测试（handler + booking + availability） | ✅ |
 
 ---
 
