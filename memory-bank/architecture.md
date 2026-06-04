@@ -31,7 +31,15 @@
 
 ## apps/web/（Next.js 前端 + BFF）
 
-_尚未创建任何文件_
+| 文件 | 作用 | 状态 |
+|------|------|------|
+| `package.json` | Next.js 16 + React 19 + tRPC + next-auth + zustand + date-fns | ✅ |
+| `tsconfig.json` | strict + noUncheckedIndexedAccess + exactOptionalPropertyTypes | ✅ |
+| `next.config.ts` | transpilePackages + image remote patterns | ✅ |
+| `.env.local` | 本地开发环境变量（Git 排除） | ✅ |
+| `src/app/layout.tsx` | 根布局（待更新为 tRPC provider + auth） | ⏳ |
+| `src/app/page.tsx` | 首页（默认模板，待替换） | ⏳ |
+| `src/app/globals.css` | Tailwind CSS v4 样式 | ✅ |
 
 ---
 
