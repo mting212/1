@@ -52,7 +52,11 @@ _尚未创建任何文件_
 | `proto/scheduler_grpc.pb.go` | gRPC 服务端/客户端生成代码（根级回退） | ✅ |
 | `proto/scheduler/v1/scheduler.pb.go` | Protobuf 消息定义生成代码 | ✅ |
 | `proto/scheduler/v1/scheduler_grpc.pb.go` | gRPC 服务端/客户端生成代码 | ✅ |
-| `cmd/scheduler/` | 调度服务入口（待创建 main.go） | ⏳ |
+| `cmd/scheduler/main.go` | gRPC 服务器入口：:9090 + interceptors + grace shutdown | ✅ |
+| `internal/handler.go` | `SchedulerHandler` — gRPC service 实现，连接 proto ↔ 业务逻辑 | ✅ |
+| `internal/handler_test.go` | Handler 5 个单元测试（GetAvailability/CreateBooking/CancelBooking） | ✅ |
+| `internal/middleware/logging.go` | gRPC 拦截器：请求日志 + panic recovery | ✅ |
+| `internal/booking/store_memory.go` | `InMemoryStore` — BookingStore 的内存实现（开发/MVP 用） | ✅ |
 | `internal/availability/engine.go` | `CalculateAvailability` — 6 阶段可用性计算纯函数 | ✅ |
 | `internal/availability/engine_test.go` | 可用性计算 11 个单元测试 | ✅ |
 | `internal/availability/ranking.go` | `RankTimeSlots` — cluster/spread 双策略排序 | ✅ |
