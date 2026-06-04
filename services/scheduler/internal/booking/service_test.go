@@ -13,79 +13,7 @@ func wedAt(h, m int) time.Time {
 	return time.Date(2026, 6, 3, h, m, 0, 0, utc)
 }
 
-// InMemoryStore implements BookingStore for testing with optional conflict injection.
-type InMemoryStore struct {
-	mu       sync.Mutex
-	bookings map[string]BookingRecord
-	byLink   map[string][]string // schedule_link_id -> booking IDs
-
-	// SimulatePhase2Conflict, when set, causes InsertBooking to fail with
-	// ErrConflict as if a concurrent booking slipped in.
-	SimulatePhase2Conflict bool
-}
-
-func NewInMemoryStore() *InMemoryStore {
-	return &InMemoryStore{
-		bookings: make(map[string]BookingRecord),
-		byLink:   make(map[string][]string),
-	}
-}
-
-func (s *InMemoryStore) GetBookings(scheduleLinkID string) ([]BookingRecord, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	var result []BookingRecord
-	for _, id := range s.byLink[scheduleLinkID] {
-		if b, ok := s.bookings[id]; ok {
-			result = append(result, b)
-		}
-	}
-	return result, nil
-}
-
-func (s *InMemoryStore) InsertBooking(record BookingRecord) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Simulate a concurrent booking conflict
-	if s.SimulatePhase2Conflict {
-		return ErrConflict
-	}
-
-	// Re-verify no conflict (simulating DB exclusion constraint)
-	for _, id := range s.byLink[record.ScheduleLinkID] {
-		if b, ok := s.bookings[id]; ok && b.Status != "cancelled" {
-			if overlaps(record.StartTime, record.EndTime, b.StartTime, b.EndTime) {
-				return ErrConflict
-			}
-		}
-	}
-
-	s.bookings[record.ID] = record
-	s.byLink[record.ScheduleLinkID] = append(s.byLink[record.ScheduleLinkID], record.ID)
-	return nil
-}
-
-func (s *InMemoryStore) CancelBooking(bookingID string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	b, ok := s.bookings[bookingID]
-	if !ok {
-		return errors.New("booking not found")
-	}
-	b.Status = "cancelled"
-	s.bookings[bookingID] = b
-	return nil
-}
-
-func (s *InMemoryStore) addBooking(record BookingRecord) {
-	s.bookings[record.ID] = record
-	s.byLink[record.ScheduleLinkID] = append(s.byLink[record.ScheduleLinkID], record.ID)
-}
-
-// --- Tests ---
+// --- Conflict Detection Tests ---
 
 func TestCheckConflict_NoConflict(t *testing.T) {
 	existing := []BookingRecord{
@@ -116,8 +44,6 @@ func TestCheckConflict_PartialOverlapFront(t *testing.T) {
 	existing := []BookingRecord{
 		{ID: "b1", ScheduleLinkID: "link1", StartTime: wedAt(10, 0), EndTime: wedAt(10, 30), Status: "confirmed"},
 	}
-
-	// Candidate: 10:15-10:45 overlaps the end of existing 10:00-10:30
 	result := CheckConflict("link1", wedAt(10, 15), wedAt(10, 45), existing)
 	if !result.HasConflict {
 		t.Error("expected conflict for partial overlap (front), got none")
@@ -128,8 +54,6 @@ func TestCheckConflict_PartialOverlapBack(t *testing.T) {
 	existing := []BookingRecord{
 		{ID: "b1", ScheduleLinkID: "link1", StartTime: wedAt(10, 0), EndTime: wedAt(10, 30), Status: "confirmed"},
 	}
-
-	// Candidate: 9:45-10:15 overlaps the start of existing 10:00-10:30
 	result := CheckConflict("link1", wedAt(9, 45), wedAt(10, 15), existing)
 	if !result.HasConflict {
 		t.Error("expected conflict for partial overlap (back), got none")
@@ -140,8 +64,6 @@ func TestCheckConflict_Containment(t *testing.T) {
 	existing := []BookingRecord{
 		{ID: "b1", ScheduleLinkID: "link1", StartTime: wedAt(10, 0), EndTime: wedAt(11, 0), Status: "confirmed"},
 	}
-
-	// Candidate: 10:15-10:45 is fully inside existing 10:00-11:00
 	result := CheckConflict("link1", wedAt(10, 15), wedAt(10, 45), existing)
 	if !result.HasConflict {
 		t.Error("expected conflict for containment, got none")
@@ -152,8 +74,6 @@ func TestCheckConflict_BoundaryTouch_NoConflict(t *testing.T) {
 	existing := []BookingRecord{
 		{ID: "b1", ScheduleLinkID: "link1", StartTime: wedAt(10, 0), EndTime: wedAt(10, 30), Status: "confirmed"},
 	}
-
-	// Candidate starts exactly when existing ends: 10:30-11:00
 	result := CheckConflict("link1", wedAt(10, 30), wedAt(11, 0), existing)
 	if result.HasConflict {
 		t.Error("boundary touch should not be a conflict, but got one")
@@ -164,7 +84,6 @@ func TestCheckConflict_CancelledIgnored(t *testing.T) {
 	existing := []BookingRecord{
 		{ID: "b1", ScheduleLinkID: "link1", StartTime: wedAt(10, 0), EndTime: wedAt(10, 30), Status: "cancelled"},
 	}
-
 	result := CheckConflict("link1", wedAt(10, 0), wedAt(10, 30), existing)
 	if result.HasConflict {
 		t.Error("cancelled booking should not cause conflict")
@@ -175,13 +94,13 @@ func TestCheckConflict_DifferentScheduleLink(t *testing.T) {
 	existing := []BookingRecord{
 		{ID: "b1", ScheduleLinkID: "link1", StartTime: wedAt(10, 0), EndTime: wedAt(10, 30), Status: "confirmed"},
 	}
-
-	// Same time, different schedule link — no conflict
 	result := CheckConflict("link2", wedAt(10, 0), wedAt(10, 30), existing)
 	if result.HasConflict {
 		t.Error("different schedule link should not cause conflict")
 	}
 }
+
+// --- Booking Service Tests ---
 
 func TestCreateBooking_Success(t *testing.T) {
 	store := NewInMemoryStore()
@@ -206,7 +125,6 @@ func TestCreateBooking_Success(t *testing.T) {
 		t.Error("expected non-empty booking ID")
 	}
 
-	// Verify booking is in store
 	bookings, _ := store.GetBookings("link1")
 	if len(bookings) != 1 {
 		t.Errorf("expected 1 booking, got %d", len(bookings))
@@ -215,7 +133,7 @@ func TestCreateBooking_Success(t *testing.T) {
 
 func TestCreateBooking_Conflict(t *testing.T) {
 	store := NewInMemoryStore()
-	store.addBooking(BookingRecord{
+	store.AddBooking(BookingRecord{
 		ID: "existing1", ScheduleLinkID: "link1",
 		StartTime: wedAt(10, 0), EndTime: wedAt(10, 30),
 		Status: "confirmed",
@@ -246,7 +164,7 @@ func TestCreateBooking_InvalidTimeRange(t *testing.T) {
 	_, err := svc.CreateBooking(CreateBookingInput{
 		ScheduleLinkID: "link1",
 		StartTime:      wedAt(10, 30),
-		EndTime:        wedAt(10, 0), // end before start
+		EndTime:        wedAt(10, 0),
 		AttendeeName:   "Charlie",
 		AttendeeEmail:  "charlie@example.com",
 	})
@@ -263,10 +181,9 @@ func TestCreateBooking_ConcurrentSafety(t *testing.T) {
 	var wg sync.WaitGroup
 	results := make(chan error, 10)
 
-	// 10 concurrent booking attempts for the same slot
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		go func(idx int) {
+		go func() {
 			defer wg.Done()
 			_, err := svc.CreateBooking(CreateBookingInput{
 				ScheduleLinkID:   "link1",
@@ -277,7 +194,7 @@ func TestCreateBooking_ConcurrentSafety(t *testing.T) {
 				AttendeeTimezone: "UTC",
 			})
 			results <- err
-		}(i)
+		}()
 	}
 
 	wg.Wait()
@@ -300,7 +217,6 @@ func TestCreateBooking_ConcurrentSafety(t *testing.T) {
 		t.Errorf("expected 9 conflict failures, got %d", failCount)
 	}
 
-	// Verify only 1 booking in store
 	bookings, _ := store.GetBookings("link1")
 	if len(bookings) != 1 {
 		t.Errorf("expected exactly 1 booking in store, got %d", len(bookings))
@@ -308,8 +224,6 @@ func TestCreateBooking_ConcurrentSafety(t *testing.T) {
 }
 
 func TestCreateBooking_Phase2Conflict(t *testing.T) {
-	// Simulates the scenario where Phase 1 (read) shows no conflict,
-	// but a concurrent booking slips in before Phase 2 (insert).
 	store := NewInMemoryStore()
 	store.SimulatePhase2Conflict = true
 
@@ -333,7 +247,7 @@ func TestCreateBooking_Phase2Conflict(t *testing.T) {
 
 func TestCancelBooking_Success(t *testing.T) {
 	store := NewInMemoryStore()
-	store.addBooking(BookingRecord{
+	store.AddBooking(BookingRecord{
 		ID: "b1", ScheduleLinkID: "link1",
 		StartTime: wedAt(10, 0), EndTime: wedAt(10, 30),
 		Status: "confirmed",
@@ -346,7 +260,6 @@ func TestCancelBooking_Success(t *testing.T) {
 		t.Fatalf("expected cancel to succeed, got: %v", err)
 	}
 
-	// After cancellation, the same slot should be bookable
 	result, err := svc.CreateBooking(CreateBookingInput{
 		ScheduleLinkID: "link1",
 		StartTime:      wedAt(10, 0),
@@ -381,7 +294,6 @@ func TestBusySlotsFromBookings(t *testing.T) {
 
 	slots := BusySlotsFromBookings(bookings)
 
-	// Only 2 confirmed bookings
 	if len(slots) != 2 {
 		t.Errorf("expected 2 busy slots (cancelled excluded), got %d", len(slots))
 	}

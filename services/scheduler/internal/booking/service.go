@@ -118,6 +118,11 @@ func (s *BookingService) CancelBooking(bookingID string) error {
 	return s.store.CancelBooking(bookingID)
 }
 
+// GetBookings returns all bookings for a schedule link (delegates to store).
+func (s *BookingService) GetBookings(scheduleLinkID string) ([]BookingRecord, error) {
+	return s.store.GetBookings(scheduleLinkID)
+}
+
 // generateBookingID creates a unique booking identifier.
 // In production, this would be a UUID.
 var bookingIDCounter int
