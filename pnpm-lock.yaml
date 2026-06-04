@@ -122,6 +122,9 @@ importers:
       pg:
         specifier: ^8.13.0
         version: 8.21.0
+      zod:
+        specifier: ^3.24.0
+        version: 3.24.0
     devDependencies:
       '@types/pg':
         specifier: ^8.11.0
@@ -141,6 +144,12 @@ importers:
       vitest:
         specifier: ^2.1.0
         version: 2.1.0(@types/node@25.9.1)(lightningcss@1.32.0)(msw@2.14.6(@types/node@25.9.1)(typescript@5.7.2))
+
+  packages/ui:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.7.2
 
 packages:
 
