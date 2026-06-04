@@ -9,9 +9,9 @@
 ## 当前状态
 
 - **当前 Phase**: 2（Go 调度引擎）
-- **当前步骤**: 14
+- **当前步骤**: 16
 - **总步骤数**: 60
-- **已完成**: 14
+- **已完成**: 16
 - **进行中**: 0
 
 ---
@@ -34,6 +34,8 @@
 | 12 | 创建数据库测试辅助工具 | 2026-06-04 | ✅ tsc noEmit 通过 | create/drop/seed test DB |
 | 13 | 初始化 Go 模块与项目结构 | 2026-06-04 | ✅ go build/vet 通过 | github.com/meetflow/scheduler, 5 个依赖 |
 | 14 | 定义 Protobuf 接口 | 2026-06-04 | ✅ buf lint 通过, go build 通过 | 3 RPC: GetAvailability, CreateBooking, CancelBooking |
+| 15 | 实现可用性计算引擎 | 2026-06-04 | ✅ 11/11 测试通过 | 6 阶段流水线，纯函数无副作用 |
+| 16 | 实现时段排序引擎 | 2026-06-04 | ✅ 5/5 测试通过 | cluster/spread 双策略，距离计算排序 |
 
 ---
 

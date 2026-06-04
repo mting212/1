@@ -53,7 +53,10 @@ _尚未创建任何文件_
 | `proto/scheduler/v1/scheduler.pb.go` | Protobuf 消息定义生成代码 | ✅ |
 | `proto/scheduler/v1/scheduler_grpc.pb.go` | gRPC 服务端/客户端生成代码 | ✅ |
 | `cmd/scheduler/` | 调度服务入口（待创建 main.go） | ⏳ |
-| `internal/availability/` | 可用性计算引擎（待创建） | ⏳ |
+| `internal/availability/engine.go` | `CalculateAvailability` — 6 阶段可用性计算纯函数 | ✅ |
+| `internal/availability/engine_test.go` | 可用性计算 11 个单元测试 | ✅ |
+| `internal/availability/ranking.go` | `RankTimeSlots` — cluster/spread 双策略排序 | ✅ |
+| `internal/availability/ranking_test.go` | 排序引擎 5 个单元测试 | ✅ |
 | `internal/booking/` | 预约事务（待创建） | ⏳ |
 | `internal/sync/` | 日历同步适配器（待创建） | ⏳ |
 | `pkg/cache/` | Redis 缓存工具（待创建） | ⏳ |
