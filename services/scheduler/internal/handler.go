@@ -3,10 +3,12 @@ package internal
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/meetflow/scheduler/internal/availability"
 	"github.com/meetflow/scheduler/internal/booking"
+	"github.com/meetflow/scheduler/pkg/cache"
 	schedulerv1 "github.com/meetflow/scheduler/proto/scheduler/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -15,12 +17,18 @@ import (
 // SchedulerHandler implements the gRPC SchedulerServiceServer.
 type SchedulerHandler struct {
 	schedulerv1.UnimplementedSchedulerServiceServer
-	svc *booking.BookingService
+	svc   *booking.BookingService
+	cache *cache.AvailabilityCache
 }
 
-// NewSchedulerHandler creates a handler with the given booking service.
+// NewSchedulerHandler creates a handler with the given booking service and optional cache.
 func NewSchedulerHandler(svc *booking.BookingService) *SchedulerHandler {
-	return &SchedulerHandler{svc: svc}
+	return &SchedulerHandler{svc: svc, cache: cache.NewAvailabilityCache(nil)}
+}
+
+// NewSchedulerHandlerWithCache creates a handler with Redis caching enabled.
+func NewSchedulerHandlerWithCache(svc *booking.BookingService, c *cache.AvailabilityCache) *SchedulerHandler {
+	return &SchedulerHandler{svc: svc, cache: c}
 }
 
 // GetAvailability returns available time slots for a scheduling link.
@@ -58,6 +66,26 @@ func (h *SchedulerHandler) GetAvailability(
 		},
 	}
 
+	// Check cache first
+	cacheKey := cache.AvailabilityCacheKey(req.ScheduleLinkId, req.WindowStart, req.WindowEnd)
+	if h.cache.IsEnabled() {
+		if cached, hit := h.cache.Get(ctx, cacheKey); hit {
+			log.Printf("[cache] hit for key %s (%d slots)", cacheKey, len(cached))
+			resp := &schedulerv1.GetAvailabilityResponse{
+				Slots: make([]*schedulerv1.TimeSlot, len(cached)),
+			}
+			for i, s := range cached {
+				resp.Slots[i] = &schedulerv1.TimeSlot{
+					Start: s.Start,
+					End:   s.End,
+					Rank:  schedulerv1.SlotRank(s.Rank),
+				}
+			}
+			return resp, nil
+		}
+		log.Printf("[cache] miss for key %s", cacheKey)
+	}
+
 	// Add invitee calendar events as busy slots
 	for _, e := range req.InviteeCalendarEvents {
 		start, err := time.Parse(time.RFC3339, e.Start)
@@ -92,6 +120,19 @@ func (h *SchedulerHandler) GetAvailability(
 			End:   s.End.Format(time.RFC3339),
 			Rank:  toProtoRank(s.Rank),
 		}
+	}
+
+	// Write to cache
+	if h.cache.IsEnabled() {
+		cached := make([]cache.SlotData, len(slots))
+		for i, s := range slots {
+			cached[i] = cache.SlotData{
+				Start: s.Start.Format(time.RFC3339),
+				End:   s.End.Format(time.RFC3339),
+				Rank:  int32(toProtoRank(s.Rank)),
+			}
+		}
+		h.cache.Set(ctx, cacheKey, cached)
 	}
 
 	return resp, nil
@@ -133,6 +174,9 @@ func (h *SchedulerHandler) CreateBooking(
 		return nil, status.Errorf(codes.Internal, "booking failed: %v", err)
 	}
 
+	// Invalidate cache for this schedule link
+	h.cache.Invalidate(ctx, req.ScheduleLinkId)
+
 	return &schedulerv1.CreateBookingResponse{
 		BookingId: result.BookingID,
 		Status:    schedulerv1.BookingStatus_BOOKING_STATUS_CONFIRMED,
@@ -149,6 +193,11 @@ func (h *SchedulerHandler) CancelBooking(
 			Success: false,
 			Message: err.Error(),
 		}, nil
+	}
+
+	// Invalidate cache if we can find the schedule link
+	if booking, ok := h.svc.GetBooking(req.BookingId); ok {
+		h.cache.Invalidate(ctx, booking.ScheduleLinkID)
 	}
 
 	return &schedulerv1.CancelBookingResponse{

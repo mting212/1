@@ -76,6 +76,14 @@ func (s *InMemoryStore) CancelBooking(bookingID string) error {
 	return nil
 }
 
+// GetBooking returns a single booking by ID.
+func (s *InMemoryStore) GetBooking(bookingID string) (BookingRecord, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	b, ok := s.bookings[bookingID]
+	return b, ok
+}
+
 // AddBooking is a test helper that directly inserts a booking without conflict checks.
 func (s *InMemoryStore) AddBooking(record BookingRecord) {
 	s.mu.Lock()

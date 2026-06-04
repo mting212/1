@@ -123,6 +123,14 @@ func (s *BookingService) GetBookings(scheduleLinkID string) ([]BookingRecord, er
 	return s.store.GetBookings(scheduleLinkID)
 }
 
+// GetBooking returns a single booking by ID. Returns the booking and true if found.
+func (s *BookingService) GetBooking(bookingID string) (BookingRecord, bool) {
+	if getter, ok := s.store.(interface{ GetBooking(string) (BookingRecord, bool) }); ok {
+		return getter.GetBooking(bookingID)
+	}
+	return BookingRecord{}, false
+}
+
 // generateBookingID creates a unique booking identifier.
 // In production, this would be a UUID.
 var bookingIDCounter int
