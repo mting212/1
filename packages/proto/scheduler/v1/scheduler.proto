@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package scheduler.v1;
+
+option go_package = "github.com/meetflow/scheduler/proto/scheduler/v1;schedulerv1";
+
+// SchedulerService provides availability calculation and booking management.
+service SchedulerService {
+  // GetAvailability returns available time slots for a scheduling link
+  // within the given time window.
+  rpc GetAvailability(GetAvailabilityRequest) returns (GetAvailabilityResponse);
+
+  // CreateBooking atomically reserves a time slot.
+  rpc CreateBooking(CreateBookingRequest) returns (CreateBookingResponse);
+
+  // CancelBooking releases a previously reserved time slot.
+  rpc CancelBooking(CancelBookingRequest) returns (CancelBookingResponse);
+}
+
+// --- Shared Messages ---
+
+message CalendarEvent {
+  string start = 1;   // RFC3339 timestamp
+  string end = 2;     // RFC3339 timestamp
+  string summary = 3; // Event title
+}
+
+enum SlotRank {
+  SLOT_RANK_UNSPECIFIED = 0;
+  SLOT_RANK_AVAILABLE = 1;
+  SLOT_RANK_PREFERRED = 2;
+}
+
+message TimeSlot {
+  string start = 1;  // RFC3339 timestamp
+  string end = 2;    // RFC3339 timestamp
+  SlotRank rank = 3;
+}
+
+// --- GetAvailability ---
+
+message GetAvailabilityRequest {
+  string schedule_link_id = 1;
+  string window_start = 2;   // RFC3339 timestamp
+  string window_end = 3;     // RFC3339 timestamp
+  string invitee_timezone = 4;
+  repeated CalendarEvent invitee_calendar_events = 5;
+}
+
+message GetAvailabilityResponse {
+  repeated TimeSlot slots = 1;
+}
+
+// --- CreateBooking ---
+
+message CreateBookingRequest {
+  string schedule_link_id = 1;
+  string start_time = 2;         // RFC3339 timestamp
+  string end_time = 3;           // RFC3339 timestamp
+  string attendee_name = 4;
+  string attendee_email = 5;
+  string attendee_timezone = 6;
+  string notes = 7;
+}
+
+enum BookingStatus {
+  BOOKING_STATUS_UNSPECIFIED = 0;
+  BOOKING_STATUS_CONFIRMED = 1;
+  BOOKING_STATUS_CONFLICT = 2;
+}
+
+message CreateBookingResponse {
+  string booking_id = 1;
+  BookingStatus status = 2;
+  string meeting_url = 3;
+  string error_message = 4;
+}
+
+// --- CancelBooking ---
+
+message CancelBookingRequest {
+  string booking_id = 1;
+}
+
+message CancelBookingResponse {
+  bool success = 1;
+  string message = 2;
+}
