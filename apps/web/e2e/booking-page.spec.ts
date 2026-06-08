@@ -109,8 +109,9 @@ test.describe("Booking Page — Mobile Responsive", () => {
       await slot.click()
 
       // Form should be visible (bottom sheet on mobile)
-      await expect(page.getByTestId("input-name").first()).toBeVisible()
-      await expect(page.getByTestId("btn-submit-booking").first()).toBeVisible()
+      // Use .last() — mobile form is second in DOM after hidden desktop form
+      await expect(page.getByTestId("input-name").last()).toBeVisible()
+      await expect(page.getByTestId("btn-submit-booking").last()).toBeVisible()
     }
   })
 

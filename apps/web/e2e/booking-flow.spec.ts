@@ -9,25 +9,31 @@ test.describe("Complete Booking Flow", () => {
     const grid = page.getByTestId("calendar-grid")
     await expect(grid).toBeVisible({ timeout: 15000 })
 
-    // Step 1: Select an available or preferred slot
-    const slot = grid.getByTestId("slot-preferred").or(grid.getByTestId("slot-available")).first()
-    if (!(await slot.isVisible().catch(() => false))) {
-      test.skip(true, "No bookable slots found")
-      return
+    // Select a specific available slot by trying multiple
+    let booked = false
+    const availableSlots = grid.getByTestId("slot-preferred")
+    const count = await availableSlots.count()
+    for (let i = 0; i < count && !booked; i++) {
+      await availableSlots.nth(i).click()
+      await page.getByTestId("input-name").first().fill("Alice Smith")
+      await page.getByTestId("input-email").first().fill("alice@example.com")
+      await page.getByTestId("btn-submit-booking").first().click()
+
+      // Wait for either success or conflict
+      const success = await Promise.race([
+        page.waitForSelector("text=Booking Confirmed!", { timeout: 5000 }).then(() => true),
+        page.waitForSelector("text=already been booked", { timeout: 5000 }).then(() => false),
+      ]).catch(() => false)
+
+      if (success) {
+        booked = true
+      } else {
+        // Close the error panel and go back to try next slot
+        await page.goto("/test/30min")
+        await expect(grid).toBeVisible({ timeout: 5000 })
+      }
     }
-    await slot.click()
-
-    // Step 2: Fill booking form (use .first() because form renders twice: desktop + mobile)
-    await page.getByTestId("input-name").first().fill("Alice Smith")
-    await page.getByTestId("input-email").first().fill("alice@example.com")
-
-    // Step 3: Submit booking
-    await page.getByTestId("btn-submit-booking").first().click()
-
-    // Step 4: Should show success state
-    await expect(page.locator("text=Booking Confirmed!")).toBeVisible({
-      timeout: 10000,
-    })
+    expect(booked).toBe(true)
   })
 
   test("should prevent double booking of same slot", async ({ page }) => {
@@ -35,37 +41,47 @@ test.describe("Complete Booking Flow", () => {
     const grid = page.getByTestId("calendar-grid")
     await expect(grid).toBeVisible({ timeout: 15000 })
 
-    // Book first available/preferred slot
-    const slot = grid.getByTestId("slot-preferred").or(grid.getByTestId("slot-available")).first()
-    if (!(await slot.isVisible().catch(() => false))) {
-      test.skip(true, "No bookable slots")
-      return
-    }
-    await slot.click()
-    await page.getByTestId("input-name").first().fill("First User")
-    await page.getByTestId("input-email").first().fill("first@example.com")
-    await page.getByTestId("btn-submit-booking").first().click()
-    await expect(page.locator("text=Booking Confirmed!")).toBeVisible({
-      timeout: 10000,
-    })
+    // Book first available slot
+    let booked = false
+    const availableSlots = grid.getByTestId("slot-preferred")
+    const count = await availableSlots.count()
+    for (let i = 0; i < count && !booked; i++) {
+      await availableSlots.nth(i).click()
+      await page.getByTestId("input-name").first().fill("First User")
+      await page.getByTestId("input-email").first().fill("first@example.com")
+      await page.getByTestId("btn-submit-booking").first().click()
 
-    // Go back to booking page
+      const success = await Promise.race([
+        page.waitForSelector("text=Booking Confirmed!", { timeout: 5000 }).then(() => true),
+        page.waitForSelector("text=already been booked", { timeout: 5000 }).then(() => false),
+      ]).catch(() => false)
+
+      if (success) {
+        booked = true
+      } else {
+        await page.goto("/test/30min")
+        await expect(grid).toBeVisible({ timeout: 5000 })
+      }
+    }
+    expect(booked).toBe(true)
+
+    // Go back and try booking the same slot — should fail or go to different slot
     await page.goto("/test/30min")
     await expect(grid).toBeVisible({ timeout: 15000 })
 
-    // Try to book the same slot again
-    const slotAgain = grid.getByTestId("slot-preferred").or(grid.getByTestId("slot-available")).first()
+    // Try booking — it may succeed (different slot) or conflict (same slot)
+    const slotAgain = availableSlots.first()
     if (await slotAgain.isVisible().catch(() => false)) {
       await slotAgain.click()
       await page.getByTestId("input-name").first().fill("Second User")
       await page.getByTestId("input-email").first().fill("second@example.com")
       await page.getByTestId("btn-submit-booking").first().click()
 
-      // Either success (different slot) or conflict
       const result = await Promise.race([
         page.waitForSelector("text=Booking Confirmed!", { timeout: 5000 }),
-        page.waitForSelector("text=just booked", { timeout: 5000 }),
+        page.waitForSelector("text=already been booked", { timeout: 5000 }),
       ]).catch(() => null)
+      // Either outcome is valid
       expect(result).toBeTruthy()
     }
   })
@@ -75,19 +91,29 @@ test.describe("Complete Booking Flow", () => {
     const grid = page.getByTestId("calendar-grid")
     await expect(grid).toBeVisible({ timeout: 15000 })
 
-    // Book a slot
-    const slot = grid.getByTestId("slot-preferred").or(grid.getByTestId("slot-available")).first()
-    if (!(await slot.isVisible().catch(() => false))) {
-      test.skip(true, "No bookable slots")
-      return
+    // Book any available slot (may need to retry due to parallel tests)
+    let booked = false
+    const availableSlots = grid.getByTestId("slot-preferred")
+    const count = await availableSlots.count()
+    for (let i = 0; i < count && !booked; i++) {
+      await availableSlots.nth(i).click()
+      await page.getByTestId("input-name").first().fill("Test User")
+      await page.getByTestId("input-email").first().fill("test@example.com")
+      await page.getByTestId("btn-submit-booking").first().click()
+
+      const success = await Promise.race([
+        page.waitForSelector("text=Booking Confirmed!", { timeout: 5000 }).then(() => true),
+        page.waitForSelector("text=already been booked", { timeout: 5000 }).then(() => false),
+      ]).catch(() => false)
+
+      if (success) {
+        booked = true
+      } else {
+        await page.goto("/test/30min")
+        await expect(grid).toBeVisible({ timeout: 5000 })
+      }
     }
-    await slot.click()
-    await page.getByTestId("input-name").first().fill("Test User")
-    await page.getByTestId("input-email").first().fill("test@example.com")
-    await page.getByTestId("btn-submit-booking").first().click()
-    await expect(page.locator("text=Booking Confirmed!")).toBeVisible({
-      timeout: 10000,
-    })
+    expect(booked).toBe(true)
 
     // Go back and verify the page still loads
     await page.goto("/test/30min")
@@ -99,8 +125,8 @@ test.describe("Dashboard & Links Management", () => {
   test("should see login page", async ({ page }) => {
     // Verify the login page is accessible
     await page.goto("/login")
-    await expect(page.locator('input[name="email"]')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('input[name="password"]')).toBeVisible()
+    await expect(page.locator("#email")).toBeVisible({ timeout: 10000 })
+    await expect(page.locator("#password")).toBeVisible()
     await expect(page.locator('button[type="submit"]')).toBeVisible()
   })
 
@@ -108,12 +134,12 @@ test.describe("Dashboard & Links Management", () => {
     await loginAsTestUser(page)
 
     // Should be on dashboard
-    await expect(page.locator("h1")).toContainText("Dashboard", { timeout: 10000 })
+    await expect(page.locator("h1").first()).toContainText("Dashboard", { timeout: 10000 })
 
-    // Navigation should work
-    await expect(page.locator('text=Dashboard')).toBeVisible()
-    await expect(page.locator('text=Bookings')).toBeVisible()
-    await expect(page.locator('text=Links')).toBeVisible()
+    // Navigation should work (use .first() to avoid strict mode on duplicate text)
+    await expect(page.locator("h1").first()).toBeVisible()
+    await expect(page.getByText("Bookings").first()).toBeVisible()
+    await expect(page.getByText("Links").first()).toBeVisible()
   })
 
   test("should navigate to bookings page", async ({ page }) => {
