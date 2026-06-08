@@ -10,12 +10,12 @@ export const availabilityRuleSchema = z.object({
 });
 
 export const setAvailabilityRulesSchema = z.object({
-  scheduleLinkId: z.string().uuid(),
+  scheduleLinkId: z.string().min(1),
   rules: z.array(availabilityRuleSchema).min(1),
 });
 
 export const scheduleRuleSchema = z.object({
-  scheduleLinkId: z.string().uuid(),
+  scheduleLinkId: z.string().min(1),
   ruleType: z.enum([
     "buffer_before", "buffer_after",
     "daily_limit", "weekly_limit", "monthly_limit",

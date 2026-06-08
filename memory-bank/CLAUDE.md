@@ -150,7 +150,7 @@ Output: ranked list of available time slots, each annotated as "preferred" or "a
 When coding begins, follow this sequence (dependencies are linear):
 
 ```
-1. Monorepo scaffold (turbo.json, pnpm-workspace.yaml, docker-compose.yml)
+1. Monorepo scaffold (turbo.json, pnpm-workspace.yaml, compose.yml)
 2. Database migrations (PostgreSQL schema from design-document.md §6.2)
 3. Go scheduling engine (availability calculation → conflict detection → ranking)
 4. Next.js scaffold + NextAuth.js + tRPC setup

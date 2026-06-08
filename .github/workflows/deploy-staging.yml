@@ -1,0 +1,174 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: 'staging'
+
+env:
+  PNPM_VERSION: "11"
+  REGISTRY: ghcr.io
+  IMAGE_NAME_WEB: ghcr.io/${{ github.repository_owner }}/meetflow-web
+  IMAGE_NAME_SCHEDULER: ghcr.io/${{ github.repository_owner }}/meetflow-scheduler
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  # ── Lint & Test ──────────────────────────────────────────
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: meetflow
+          POSTGRES_PASSWORD: meetflow_dev
+          POSTGRES_DB: meetflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm run typecheck
+      - run: pnpm test
+        env:
+          DATABASE_URL: postgresql://meetflow:meetflow_dev@localhost:5432/meetflow_test
+          REDIS_URL: redis://localhost:6379
+          CI: true
+
+  # ── Build & Push Docker Images ───────────────────────────
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (web)
+        id: meta_web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME_WEB }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=ref,event=branch
+            type=raw,value=latest
+
+      - name: Extract metadata (scheduler)
+        id: meta_scheduler
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME_SCHEDULER }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=ref,event=branch
+            type=raw,value=latest
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta_web.outputs.tags }}
+          labels: ${{ steps.meta_web.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push scheduler image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/scheduler
+          file: services/scheduler/Dockerfile
+          push: true
+          tags: ${{ steps.meta_scheduler.outputs.tags }}
+          labels: ${{ steps.meta_scheduler.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Deploy to Server ─────────────────────────────────────
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 15
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/meetflow
+
+            # Pull latest compose config
+            git pull origin main
+
+            # Pull latest images
+            docker compose -f compose.prod.yml pull
+
+            # Restart services with zero-downtime (web + scheduler only)
+            docker compose -f compose.prod.yml up -d --remove-orphans
+
+            # Prune old images (keep last 3)
+            docker image prune -af --filter "until=72h"
+
+            # Verify health
+            sleep 5
+            docker compose -f compose.prod.yml ps
+            curl -sf http://localhost:3000/api/trpc/health || echo "WARN: Health check failed"

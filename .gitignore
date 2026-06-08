@@ -28,3 +28,17 @@ Thumbs.db
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Test artifacts
+playwright-report/
+test-results/
+
+# Lighthouse / screenshot outputs
+lighthouse-*.html
+screenshot-*.png
+
+# Docker build context
+.dockerignore
+
+# Production env template (safe to share without secrets)
+# .env.production is tracked

@@ -18,7 +18,7 @@
 | `pnpm-workspace.yaml` | 声明 workspace 成员 apps/* 和 packages/* | ✅ |
 | `pnpm-lock.yaml` | pnpm 依赖锁文件 | ✅ |
 | `turbo.json` | Turborepo pipeline 定义（build 依赖 ^build） | ✅ |
-| `docker-compose.yml` | 本地 PostgreSQL 16 + Redis 7 容器，含健康检查 | ✅ |
+| `compose.yml` | 本地 PostgreSQL 16 + Redis 7 容器，含健康检查 | ✅ |
 | `lefthook.yml` | Git hooks 配置（lefthook 自动生成，待配置） | ⏳ |
 | `memory-bank/CLAUDE.md` | 项目规则文件，10 类 32 条规则，引导 AI 正确开发 | ✅ |
 | `memory-bank/design-document.md` | 产品设计方案 | ✅ |

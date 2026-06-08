@@ -147,12 +147,12 @@ scripts/
 **目标**: 一键启动 PostgreSQL 和 Redis 的本地实例。
 
 **具体操作**:
-1. 在根目录创建 `docker-compose.yml`
+1. 在根目录创建 `compose.yml`
 2. 定义两个 service：
    - `postgres`: 镜像 `postgres:16-alpine`，端口映射 `5432:5432`，设置 `POSTGRES_USER=meetflow`、`POSTGRES_PASSWORD=meetflow_dev`、`POSTGRES_DB=meetflow`，挂载 volume `pgdata:/var/lib/postgresql/data`，添加健康检查 `pg_isready -U meetflow`
    - `redis`: 镜像 `redis:7-alpine`，端口映射 `6379:6379`，添加健康检查 `redis-cli ping`
 3. 创建 `.env` 文件（注意已在 `.gitignore` 中），填入 `DATABASE_URL=postgresql://meetflow:meetflow_dev@localhost:5432/meetflow` 和 `REDIS_URL=redis://localhost:6379`
-4. 提交 `docker-compose.yml`（不提交 `.env`）
+4. 提交 `compose.yml`（不提交 `.env`）
 
 **验证测试**:
 - 执行 `docker compose up -d`，两个容器均启动
@@ -1506,7 +1506,7 @@ scripts/
 2. 创建 GitHub Actions 部署工作流 `.github/workflows/deploy-staging.yml`：
    - 触发条件：push 到 `main` 分支
    - 步骤：lint → test → build → deploy
-3. 创建 `docker-compose.prod.yml`（生产用，单机版）
+3. 创建 `compose.prod.yml`（生产用，单机版）
 4. 配置 SSL 证书（Let's Encrypt + Certbot）
 5. 配置 DNS：`staging.meetflow.dev` 指向预发布环境
 6. 执行部署
@@ -1636,7 +1636,7 @@ scripts/
    - 数据库连接数告警（>80% 使用率）
    - API 错误率告警（>5%）
    - 服务健康检查（UptimeRobot 或类似）
-5. 准备回滚方案：保留上一个版本的 Docker image，确保可以一键回滚
+5. 准备回滚方案：保留上一个版本的容器 image，确保可以一键回滚
 6. 创建 `docs/launch-checklist.md` 记录发布步骤和回滚步骤
 7. 邀请第一批用户（最少 3 个真实用户，但不超过 20 个）
 

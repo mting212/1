@@ -456,7 +456,7 @@ meetflow/
 │   ├── terraform/            # 基础设施即代码
 │   └── k8s/                  # Kubernetes 清单
 ├── scripts/                  # CI/CD 脚本
-├── docker-compose.yml        # 本地开发环境
+├── compose.yml               # 本地开发环境
 ├── turbo.json                # Turborepo 配置
 └── pnpm-workspace.yaml
 ```

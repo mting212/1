@@ -1,0 +1,19 @@
+{
+  "name": "@meetflow/notification",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/mailer.ts",
+  "types": "./src/mailer.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "nodemailer": "^7.0.11",
+    "@meetflow/calendar-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^6.4.0",
+    "typescript": "^5.7.0"
+  }
+}
