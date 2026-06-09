@@ -7,14 +7,10 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  PNPM_VERSION: "11"
-
 jobs:
-  # ── Lint & Format ───────────────────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -25,11 +21,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install
       - run: pnpm lint
 
-  # ── TypeScript Check ────────────────────────────────────
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
@@ -40,11 +34,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install
       - run: pnpm run typecheck
 
-  # ── Unit & Integration Tests ────────────────────────────
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -74,26 +66,22 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
-      - run: pnpm install --no-frozen-lockfile
+          go-version: "1.25"
+      - run: pnpm install
       - run: pnpm test
         env:
           DATABASE_URL: postgresql://meetflow:meetflow_dev@localhost:5432/meetflow_test
           REDIS_URL: redis://localhost:6379
           CI: true
 
-  # ── Build Check ─────────────────────────────────────────
   build:
-    name: Build
+    name: Build Check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -102,8 +90,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "pnpm"
-      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm install
       - run: pnpm build
-      # Verify build output exists
-      - run: test -d apps/web/.next/standalone || echo "WARN: No standalone output (may need output: 'standalone' in next.config)"
+      - run: test -d apps/web/.next/standalone || echo "WARN: No standalone output"
